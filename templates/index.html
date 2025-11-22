@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Flask Chat</title>
+</head>
+
+<body>
+    <h1>Flask Chat po nickach</h1>
+    <div>
+        <input id="nickInput" placeholder="Twój nick">
+        <button id="registerBtn">Zarejestruj</button>
+        <p> </p>
+    </div>
+    <div>
+        <input id="toInput" placeholder="Nick odbiorcy">
+        <input id="messageInput" placeholder="Wiadomość">
+        <input type="file" id="imgInput" accept="image/*">
+        <input placeholder="Hidden message">
+        <button onclick="sendImage()">Send Image</button>
+        <button id="sendBtn">Wyślij</button>
+    </div>
+    <div id="chat"></div>
+
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>
