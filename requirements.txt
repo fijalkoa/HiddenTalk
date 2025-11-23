@@ -1,3 +1,8 @@
 flask
 flask-socketio
 watchdog
+numpy 
+PyWavelets 
+pycryptodome
+opencv-python-headless
+python-dotenv

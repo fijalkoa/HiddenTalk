@@ -35,7 +35,8 @@ def bits_to_bytes(bits):
     for b in range(0, len(bits), 8):
         byte = 0
         for i in range(8):
-            byte |= (bits[b + i] << i)
+            if b + i < len(bits):
+                byte |= (bits[b + i] << i)
         data.append(byte)
     return bytes(data)
 
@@ -61,6 +62,9 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
     cA, (cH, cV, cD) = pywt.dwt2(img, 'haar')
     channel = cA.copy()
 
+    # Calculate max capacity
+    max_blocks = (channel.shape[0] // 8) * (channel.shape[1] // 8)
+
     # Embed bits in 8x8 DCT blocks
     idx = 0
     for i in range(0, channel.shape[0], 8):
@@ -68,6 +72,8 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
             if idx >= len(bits):
                 break
             block = channel[i:i+8, j:j+8]
+            if block.shape[0] < 8 or block.shape[1] < 8:
+                continue
             dct_block = cv2.dct(block)
             ci, cj = 3, 3
             coef = dct_block[ci, cj]
@@ -84,7 +90,8 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
             break
 
     if idx < len(bits):
-        raise ValueError("Message too large for this image!")
+        raise ValueError(f"Message too large for this image! Embedded {idx}/{len(bits)} bits")
+
 
     # Inverse DWT
     stego = pywt.idwt2((channel, (cH, cV, cD)), 'haar')
@@ -98,6 +105,7 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
 # EXTRACTION
 # ==========================
 def extract_message_from_array(img_color: np.ndarray, key: bytes):
+    
     ycrcb = cv2.cvtColor(img_color, cv2.COLOR_BGR2YCrCb)
     Y, _, _ = cv2.split(ycrcb)
     img = Y.astype(np.float32)
@@ -105,14 +113,16 @@ def extract_message_from_array(img_color: np.ndarray, key: bytes):
     cA, (cH, cV, cD) = pywt.dwt2(img, 'haar')
     channel = cA.copy()
     h, w = channel.shape
+    
     bits = []
 
     # Extract header first (32 bits = length)
     bit_count = 0
-    pos = None
     for i in range(0, h, 8):
         for j in range(0, w, 8):
             block = channel[i:i+8, j:j+8]
+            if block.shape[0] < 8 or block.shape[1] < 8:
+                continue
             dct_block = cv2.dct(block)
             ci, cj = 3, 3
             coef = dct_block[ci, cj]
@@ -120,36 +130,51 @@ def extract_message_from_array(img_color: np.ndarray, key: bytes):
             bits.append(qval % 2)
             bit_count += 1
             if bit_count == 32:
-                pos = (i, j)
                 break
         if bit_count == 32:
             break
 
-    header_bytes = bits_to_bytes(bits)
+    header_bytes = bits_to_bytes(bits[:32])
     length, = struct.unpack("<I", header_bytes)
 
-    # Extract payload (length + CRC)
-    total_bits = (length + 4) * 8
+    total_bits_needed = 32 + (length + 4) * 8
+    
     bits = []
-    i, j = pos
-    for x in range(i, h, 8):
-        for y in range((j + 8) if x == i else 0, w, 8):
-            block = channel[x:x+8, y:y+8]
+    bit_count = 0
+    
+    for i in range(0, h, 8):
+        for j in range(0, w, 8):
+            if bit_count >= total_bits_needed:
+                break
+            block = channel[i:i+8, j:j+8]
+            if block.shape[0] < 8 or block.shape[1] < 8:
+                continue
             dct_block = cv2.dct(block)
             ci, cj = 3, 3
             coef = dct_block[ci, cj]
             qval = int(np.round(coef / Q))
             bits.append(qval % 2)
-            if len(bits) == total_bits:
-                break
-        if len(bits) == total_bits:
+            bit_count += 1
+        if bit_count >= total_bits_needed:
             break
 
-    payload = bits_to_bytes(bits)
-    encrypted = payload[:length]
-    crc_recv = struct.unpack("<I", payload[length:])[0]
-    if zlib.crc32(encrypted) != crc_recv:
-        raise ValueError("CRC mismatch — data corrupted!")
+
+    # Parse the data
+    all_bytes = bits_to_bytes(bits)
+    header = all_bytes[:4]
+    length_check, = struct.unpack("<I", header)
+    
+    encrypted = all_bytes[4:4+length]
+    crc_bytes = all_bytes[4+length:4+length+4]
+    
+    if len(crc_bytes) < 4:
+        raise ValueError(f"Not enough data for CRC. Got {len(crc_bytes)} bytes")
+    
+    crc_recv = struct.unpack("<I", crc_bytes)[0]
+    crc_calc = zlib.crc32(encrypted)
+    
+    if crc_calc != crc_recv:
+        raise ValueError(f"CRC mismatch — data corrupted! Expected {crc_recv}, got {crc_calc}")
 
     message = aes_decrypt(encrypted, key)
     return message

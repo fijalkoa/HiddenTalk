@@ -35,20 +35,16 @@ document.getElementById('sendBtn').addEventListener('click', () => {
         return;
     }
 
-    // Case 1: Image with message (steganography) - prompt for encryption key
     if (file && message) {
         pendingSend = { to, message, file, type: 'encrypted' };
         showKeyModal();
     }
-    // Case 2: Image without message
     else if (file) {
         sendImageWithMessage(to, null, file, null);
     }
-    // Case 3: Text only
     else if (message) {
         sendTextMessage(to, message);
     }
-    // Case 4: Nothing to send
     else {
         addSystemMessage("Enter a message or choose an image!");
     }
@@ -71,8 +67,8 @@ function hideKeyModal() {
 
 // Confirm encryption key
 document.getElementById('confirmKeyBtn').addEventListener('click', () => {
-    const key = document.getElementById('encryptionKeyInput').value.trim();
-    if (!key) {
+    const password = document.getElementById('encryptionKeyInput').value.trim();
+    if (!password) {
         addSystemMessage("Encryption key cannot be empty!");
         return;
     }
@@ -80,7 +76,7 @@ document.getElementById('confirmKeyBtn').addEventListener('click', () => {
     if (pendingSend) {
         const { to, message, file } = pendingSend;
         hideKeyModal();
-        sendImageWithMessage(to, message, file, key);
+        sendImageWithMessage(to, message, file, password);
     }
 });
 
@@ -93,29 +89,6 @@ document.getElementById('encryptionKeyInput').addEventListener('keypress', (e) =
         document.getElementById('confirmKeyBtn').click();
     }
 });
-
-// Simple encryption function (XOR-based, replace with proper crypto in production)
-function encryptMessage(message, key) {
-    let encrypted = '';
-    for (let i = 0; i < message.length; i++) {
-        encrypted += String.fromCharCode(message.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-    }
-    return btoa(encrypted); // Base64 encode
-}
-
-// Simple decryption function
-function decryptMessage(encryptedMessage, key) {
-    try {
-        const encrypted = atob(encryptedMessage); // Base64 decode
-        let decrypted = '';
-        for (let i = 0; i < encrypted.length; i++) {
-            decrypted += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-        }
-        return decrypted;
-    } catch (e) {
-        return null;
-    }
-}
 
 // Send text-only message
 function sendTextMessage(to, message) {
@@ -135,38 +108,33 @@ function sendTextMessage(to, message) {
 }
 
 // Send image with hidden message (if provided)
-function sendImageWithMessage(to, message, file, key) {
+function sendImageWithMessage(to, message, file, password) {
     const reader = new FileReader();
     reader.onload = function (e) {
         const arrayBuffer = e.target.result;
-        const bytes = new Uint8Array(arrayBuffer);
-        
-        let encryptedMessage = null;
-        if (message && key) {
-            encryptedMessage = encryptMessage(message, key);
-        }
+        const bytes = Array.from(new Uint8Array(arrayBuffer));
         
         socket.emit("private_image", {
             from: myNick,
             to: to,
             image: bytes,
-            hiddenMessage: encryptedMessage
+            hiddenMessage: message,
+            password: password
         });
 
-        // Add to own chat
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message message-sent';
-        const blob = new Blob([bytes], { type: "image/png"});
+        const blob = new Blob([new Uint8Array(bytes)], { type: "image/png"});
         const url = URL.createObjectURL(blob);
         
-        let displayText = encryptedMessage 
+        let displayText = message && password
             ? `🔒 Image with encrypted message`
             : 'Sent image';
         
         messageDiv.innerHTML = `
             <div class="message-sender">You → ${to}</div>
             <div class="message-text">${displayText}</div>
-            <img src="${url}" class="message-image" ${encryptedMessage ? `data-encrypted="${encryptedMessage}"` : ''}>
+            <img src="${url}" class="message-image">
         `;
         document.getElementById('chat').appendChild(messageDiv);
         
@@ -195,19 +163,29 @@ socket.on('receive_image', (data) => {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message message-received';
     
-    const blob = new Blob([data.image], { type: "image/png"});
+    const bytes = new Uint8Array(data.image);
+    const blob = new Blob([bytes], { type: "image/png"});
     const url = URL.createObjectURL(blob);
     
-    let displayText = data.hiddenMessage 
+    let displayText = data.hasHiddenMessage
         ? `🔒 Image (may contain hidden message)`
         : 'Sent image';
+    
+    const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
     messageDiv.innerHTML = `
         <div class="message-sender">${data.from}</div>
         <div class="message-text">${displayText}</div>
-        <img src="${url}" class="message-image" ${data.hiddenMessage ? `data-encrypted="${data.hiddenMessage}"` : ''}>
+        <img src="${url}" class="message-image" id="${imgId}" ${data.hasHiddenMessage ? `data-has-message="true"` : ''}>
     `;
     document.getElementById('chat').appendChild(messageDiv);
+    
+    // Store image bytes for extraction
+    if (data.hasHiddenMessage) {
+        const img = document.getElementById(imgId);
+        img.imageBytes = bytes;
+    }
+    
     scrollToBottom();
 });
 
@@ -216,8 +194,8 @@ document.addEventListener('contextmenu', (e) => {
     if (e.target.classList.contains('message-image')) {
         e.preventDefault();
         
-        const encryptedMessage = e.target.getAttribute('data-encrypted');
-        if (encryptedMessage) {
+        const hasMessage = e.target.getAttribute('data-has-message');
+        if (hasMessage === 'true') {
             const contextMenu = document.getElementById('contextMenu');
             contextMenu.style.display = 'block';
             contextMenu.style.left = e.pageX + 'px';
@@ -225,7 +203,7 @@ document.addEventListener('contextmenu', (e) => {
             
             currentImageData = {
                 element: e.target,
-                encryptedMessage: encryptedMessage
+                imageBytes: e.target.imageBytes
             };
         }
     } else {
@@ -262,22 +240,31 @@ function hideDecryptModal() {
 
 // Confirm decryption
 document.getElementById('confirmDecryptBtn').addEventListener('click', () => {
-    const key = document.getElementById('decryptionKeyInput').value.trim();
-    if (!key) {
+    const password = document.getElementById('decryptionKeyInput').value.trim();
+    if (!password) {
         addSystemMessage("Decryption key cannot be empty!");
         return;
     }
     
-    if (currentImageData) {
-        const decrypted = decryptMessage(currentImageData.encryptedMessage, key);
-        if (decrypted) {
-            addSystemMessage(`🔓 Hidden message: "${decrypted}"`);
-        } else {
-            addSystemMessage("❌ Failed to decrypt. Wrong key or corrupted message.");
-        }
+    if (currentImageData && currentImageData.imageBytes) {
+        // Send extraction request to server
+        socket.emit('extract_message', {
+            image: Array.from(currentImageData.imageBytes),
+            password: password
+        });
+        
         hideDecryptModal();
-        currentImageData = null;
     }
+});
+
+// Handle extraction response
+socket.on('message_extracted', (data) => {
+    if (data.success) {
+        addSystemMessage(`🔓 Hidden message: "${data.message}"`);
+    } else {
+        addSystemMessage(`❌ Failed to decrypt: ${data.error}`);
+    }
+    currentImageData = null;
 });
 
 // Cancel decryption

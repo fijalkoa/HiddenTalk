@@ -37,24 +37,39 @@
             </div>
 
             <div class="input-area">
-                <div class="recipient-section">
-                    <input type="text" id="toInput" placeholder="Recipient's nickname...">
-                </div>
+                <div class="input-grid">
+                    <div class="input-column">
+                        <label class="input-label">Recipient</label>
+                        <input type="text" id="toInput" placeholder="Enter nickname..." class="input-field">
+                    </div>
 
-                <div class="message-compose">
-                    <div class="compose-inputs">
-                        <input type="text" id="messageInput" placeholder="Type a message...">
-                        
-                        <div class="file-input-wrapper">
+                    <div class="input-column">
+                        <label class="input-label">Message</label>
+                        <input type="text" id="messageInput" placeholder="Type your message..." class="input-field">
+                    </div>
+
+                    <div class="input-column">
+                        <label class="input-label">Image (optional)</label>
+                        <div class="file-upload-area">
                             <input type="file" id="imgInput" accept="image/*">
-                            <label for="imgInput" class="file-input-label">📎 Choose image</label>
-                            <div class="file-name" id="fileName"></div>
+                            <label for="imgInput" class="file-upload-btn" id="fileInputLabel">
+                                <span class="upload-icon">📎</span>
+                                <span class="upload-text">Choose image</span>
+                            </label>
                         </div>
+                        <div class="file-info" id="fileName"></div>
                     </div>
 
-                    <div class="send-buttons">
-                        <button class="btn-send" id="sendBtn">Send</button>
+                    <div class="send-column">
+                        <button class="btn-send" id="sendBtn">
+                            <span class="send-icon">📤</span>
+                            <span>Send</span>
+                        </button>
                     </div>
+                </div>
+                
+                <div class="input-hint">
+                    💡 Tip: Add both message and image to use steganography encryption
                 </div>
             </div>
         </div>
