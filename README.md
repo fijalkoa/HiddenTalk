@@ -21,16 +21,16 @@ The application features a split-panel design with a dark sidebar for user manag
 
 #### Main chat view
 The core interface displays all active conversations with a clean, modern layout featuring real-time message updates and status indicators.
-![Screenshot of the main chat view](/assets/MainChat.png)
+![Screenshot of the main chat view](/readme-assets/MainChat.png)
 
 #### Seding image with hidden message
 Seamlessly embed encrypted messages into images using an intuitive workflow. Password-protected encryption ensures your secrets stay hidden.
-![Screenshot of sending hidden message](/assets/SendSecretMessage.png)
+![Screenshot of sending hidden message](/readme-assets/SendSecretMessage.png)
 
 
 #### Receiving image with hidden message
 Receive steganographic images and decrypt hidden messages with just a right-click. The 🔒 indicator shows which images contain encrypted content.
-![Screenshot of sending hidden message](/assets/GetSecretMessage.png)
+![Screenshot of sending hidden message](/readme-assets/GetSecretMessage.png)
 
 ---
 
