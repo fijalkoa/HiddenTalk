@@ -1,30 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <title>Flask Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StegaChat - Steganographic Messenger</title>
+    <link rel="stylesheet" href="../static/styles.css">
 </head>
-
 <body>
-    <h1>Flask Chat po nickach</h1>
-    <div>
-        <input id="nickInput" placeholder="Twój nick">
-        <button id="registerBtn">Zarejestruj</button>
-        <p> </p>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">StegaChat</div>
+            <div class="subtitle">Hidden communication</div>
+
+            <div class="user-section">
+                <label>Your nickname</label>
+                <input type="text" id="nickInput" placeholder="Enter nickname...">
+                <button class="btn btn-primary" id="registerBtn">Connect</button>
+            </div>
+
+            <div class="status">
+                <span class="status-indicator"></span>
+                Status: <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <h2>Encrypted conversation</h2>
+                <div class="security-badge">🔐 AES-256 + Steganography</div>
+            </div>
+
+            <div class="messages" id="chat">
+                <div class="system-message">Welcome to StegaChat. Your messages are protected.</div>
+            </div>
+
+            <div class="input-area">
+                <div class="recipient-section">
+                    <input type="text" id="toInput" placeholder="Recipient's nickname...">
+                </div>
+
+                <div class="message-compose">
+                    <div class="compose-inputs">
+                        <input type="text" id="messageInput" placeholder="Type a message...">
+                        <input type="text" id="hiddenMessageInput" placeholder="🔒 Hidden message (optional)..." class="hidden-message-input">
+                        
+                        <div class="file-input-wrapper">
+                            <input type="file" id="imgInput" accept="image/*">
+                            <label for="imgInput" class="file-input-label">📎 Choose image</label>
+                            <div class="file-name" id="fileName"></div>
+                        </div>
+                    </div>
+
+                    <div class="send-buttons">
+                        <button class="btn-send" id="sendBtn">Send text</button>
+                        <button class="btn-send" id="sendImgBtn">Send image</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div>
-        <input id="toInput" placeholder="Nick odbiorcy">
-        <input id="messageInput" placeholder="Wiadomość">
-        <input type="file" id="imgInput" accept="image/*">
-        <input placeholder="Hidden message">
-        <button onclick="sendImage()">Send Image</button>
-        <button id="sendBtn">Wyślij</button>
-    </div>
-    <div id="chat"></div>
 
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="../static/script.js"></script>
 </body>
-
 </html>
