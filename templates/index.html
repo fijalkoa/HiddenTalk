@@ -44,7 +44,6 @@
                 <div class="message-compose">
                     <div class="compose-inputs">
                         <input type="text" id="messageInput" placeholder="Type a message...">
-                        <input type="text" id="hiddenMessageInput" placeholder="🔒 Hidden message (optional)..." class="hidden-message-input">
                         
                         <div class="file-input-wrapper">
                             <input type="file" id="imgInput" accept="image/*">
@@ -54,12 +53,42 @@
                     </div>
 
                     <div class="send-buttons">
-                        <button class="btn-send" id="sendBtn">Send text</button>
-                        <button class="btn-send" id="sendImgBtn">Send image</button>
+                        <button class="btn-send" id="sendBtn">Send</button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Encryption Key Modal -->
+    <div id="keyModal" class="modal">
+        <div class="modal-content">
+            <h3>🔐 Enter Encryption Key</h3>
+            <p>This key will be used to encrypt your message in the image.</p>
+            <input type="password" id="encryptionKeyInput" placeholder="Enter encryption key...">
+            <div class="modal-buttons">
+                <button class="btn-modal btn-cancel" id="cancelKeyBtn">Cancel</button>
+                <button class="btn-modal btn-confirm" id="confirmKeyBtn">Encrypt & Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Decryption Key Modal -->
+    <div id="decryptModal" class="modal">
+        <div class="modal-content">
+            <h3>🔓 Enter Decryption Key</h3>
+            <p>Enter the key to reveal the hidden message.</p>
+            <input type="password" id="decryptionKeyInput" placeholder="Enter decryption key...">
+            <div class="modal-buttons">
+                <button class="btn-modal btn-cancel" id="cancelDecryptBtn">Cancel</button>
+                <button class="btn-modal btn-confirm" id="confirmDecryptBtn">Decrypt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu">
+        <div class="context-menu-item" id="checkMessageOption">🔍 Check for hidden message</div>
     </div>
 
     <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>

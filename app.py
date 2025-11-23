@@ -23,15 +23,18 @@ def handle_private_image(data):
     target = data['to']
     sender = data['from']
     image_bytes = data['image']
+    hidden_message = data.get('hiddenMessage', None)
 
     target_sid = users.get(target)
     print(f"Sending image from {sender} to {target} (SID: {target_sid})")
+    
     if target_sid:
-        # Step 1: send metadata (who sent it)
-        emit('receive_image', {'from': sender, 'image': image_bytes}, to=target_sid)
-
-        # Step 2: send raw binary
-        # emit('receive_image_bytes', image_bytes, to=target_sid, binary=True)
+        # Send image with optional hidden message
+        emit('receive_image', {
+            'from': sender, 
+            'image': image_bytes,
+            'hiddenMessage': hidden_message
+        }, to=target_sid)
     else:
         emit('system_message', f'Użytkownik {target} nie jest dostępny')
 
