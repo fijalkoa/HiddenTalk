@@ -56,6 +56,7 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
     crc = zlib.crc32(encrypted)
     header = struct.pack("<I", len(encrypted))
     payload = header + encrypted + struct.pack("<I", crc)
+    print(f"Payload size: {len(payload)} bytes")
     bits = bytes_to_bits(payload)
 
     # DWT
@@ -64,8 +65,9 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
 
     # Calculate max capacity
     max_blocks = (channel.shape[0] // 8) * (channel.shape[1] // 8)
-
-    # Embed bits in 8x8 DCT blocks
+    print(f"Max capacity: {max_blocks * 2 // 8} bytes")
+    
+    # Embed bits in 8x8 DCT blocks (2 bits per block)
     idx = 0
     for i in range(0, channel.shape[0], 8):
         for j in range(0, channel.shape[1], 8):
@@ -75,17 +77,33 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
             if block.shape[0] < 8 or block.shape[1] < 8:
                 continue
             dct_block = cv2.dct(block)
+            
+            # Encode bit 1 in coefficient (3, 3)
             ci, cj = 3, 3
             coef = dct_block[ci, cj]
             qval = int(np.round(coef / Q))
-            bit = bits[idx]
-            if bit == 1 and qval % 2 == 0:
+            bit1 = bits[idx]
+            if bit1 == 1 and qval % 2 == 0:
                 qval += 1
-            elif bit == 0 and qval % 2 == 1:
+            elif bit1 == 0 and qval % 2 == 1:
                 qval -= 1
             dct_block[ci, cj] = qval * Q
-            channel[i:i+8, j:j+8] = cv2.idct(dct_block)
             idx += 1
+            
+            # Encode bit 2 in coefficient (4, 3) if available
+            if idx < len(bits):
+                ci, cj = 4, 3
+                coef = dct_block[ci, cj]
+                qval = int(np.round(coef / Q))
+                bit2 = bits[idx]
+                if bit2 == 1 and qval % 2 == 0:
+                    qval += 1
+                elif bit2 == 0 and qval % 2 == 1:
+                    qval -= 1
+                dct_block[ci, cj] = qval * Q
+                idx += 1
+            
+            channel[i:i+8, j:j+8] = cv2.idct(dct_block)
         if idx >= len(bits):
             break
 
@@ -96,6 +114,15 @@ def embed_message_array(img_color: np.ndarray, output_path: str, message: str, k
     # Inverse DWT
     stego = pywt.idwt2((channel, (cH, cV, cD)), 'haar')
     stego_Y = np.clip(stego, 0, 255).astype(np.uint8)
+    
+    # Ensure stego_Y matches original dimensions (crop if larger, pad if smaller)
+    if stego_Y.shape[0] > h or stego_Y.shape[1] > w:
+        stego_Y = stego_Y[:h, :w]
+    elif stego_Y.shape[0] < h or stego_Y.shape[1] < w:
+        padded = np.zeros((h, w), dtype=np.uint8)
+        padded[:stego_Y.shape[0], :stego_Y.shape[1]] = stego_Y
+        stego_Y = padded
+    
     stego_ycrcb = cv2.merge([stego_Y, Cr, Cb])
     stego_bgr = cv2.cvtColor(stego_ycrcb, cv2.COLOR_YCrCb2BGR)
     cv2.imwrite(output_path, stego_bgr)
@@ -116,22 +143,33 @@ def extract_message_from_array(img_color: np.ndarray, key: bytes):
     
     bits = []
 
-    # Extract header first (32 bits = length)
+    # Extract header first (32 bits = length, 2 bits per block = 16 blocks)
     bit_count = 0
     for i in range(0, h, 8):
         for j in range(0, w, 8):
+            if bit_count >= 32:
+                break
             block = channel[i:i+8, j:j+8]
             if block.shape[0] < 8 or block.shape[1] < 8:
                 continue
             dct_block = cv2.dct(block)
+            
+            # Extract bit 1 from coefficient (3, 3)
             ci, cj = 3, 3
             coef = dct_block[ci, cj]
             qval = int(np.round(coef / Q))
             bits.append(qval % 2)
             bit_count += 1
-            if bit_count == 32:
+            if bit_count >= 32:
                 break
-        if bit_count == 32:
+            
+            # Extract bit 2 from coefficient (4, 3)
+            ci, cj = 4, 3
+            coef = dct_block[ci, cj]
+            qval = int(np.round(coef / Q))
+            bits.append(qval % 2)
+            bit_count += 1
+        if bit_count >= 32:
             break
 
     header_bytes = bits_to_bytes(bits[:32])
@@ -150,7 +188,18 @@ def extract_message_from_array(img_color: np.ndarray, key: bytes):
             if block.shape[0] < 8 or block.shape[1] < 8:
                 continue
             dct_block = cv2.dct(block)
+            
+            # Extract bit 1 from coefficient (3, 3)
             ci, cj = 3, 3
+            coef = dct_block[ci, cj]
+            qval = int(np.round(coef / Q))
+            bits.append(qval % 2)
+            bit_count += 1
+            if bit_count >= total_bits_needed:
+                break
+            
+            # Extract bit 2 from coefficient (4, 3)
+            ci, cj = 4, 3
             coef = dct_block[ci, cj]
             qval = int(np.round(coef / Q))
             bits.append(qval % 2)
