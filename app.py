@@ -65,6 +65,12 @@ def handle_private_image(data):
                 
                 print(f"Successfully embedded message in image")
                 
+            except ValueError as e:
+                if "Message too large" in str(e):
+                    emit('system_message', 'Wiadomość jest za duża do ukrycia w tym obrazie')
+                    print("Message too large to embed")
+                else:
+                    emit('system_message', f'Błąd podczas ukrywania wiadomości: {str(e)}')
             except Exception as e:
                 print(f"Error embedding message: {e}")
                 emit('system_message', f'Błąd podczas ukrywania wiadomości: {str(e)}')

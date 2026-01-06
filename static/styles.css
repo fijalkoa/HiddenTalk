@@ -225,6 +225,16 @@ body {
     transform: scale(1.05);
 }
 
+.image-status {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.image-status.not-sent {
+    color: #e53e3e;
+}
+
 .system-message {
     align-self: center;
     background: #edf2f7;

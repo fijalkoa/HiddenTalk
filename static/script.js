@@ -168,7 +168,7 @@ socket.on('receive_image', (data) => {
     const url = URL.createObjectURL(blob);
     
     let displayText = data.hasHiddenMessage
-        ? `🔒 Image (may contain hidden message)`
+        ? `🔒 Right click on the image to check for a hidden message.`
         : 'Sent image';
     
     const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
