@@ -6,6 +6,10 @@ import hashlib
 from dotenv import load_dotenv
 import os
 from stego import embed_message_array, extract_message_from_array
+from engineio.async_drivers import gevent
+import tempfile
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'super-super-secret-key')
@@ -48,8 +52,10 @@ def handle_private_image(data):
                 success, buffer = cv2.imencode('.png', img)
                 temp_bytes = buffer.tobytes()
                 
-                temp_input = '/tmp/input_image.png'
-                temp_output = '/tmp/stego_image.png'
+                temp_dir = tempfile.gettempdir()
+                temp_input = os.path.join(temp_dir, 'input_image.png')
+                temp_output = os.path.join(temp_dir, 'stego_image.png')
+                
                 cv2.imwrite(temp_input, img)
                 
                 embed_message_array(img, temp_output, hidden_message, key)
@@ -117,4 +123,4 @@ def handle_private_message(data):
         emit('system_message', f'Użytkownik {target_nick} nie jest dostępny')
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, async_mode='gevent')

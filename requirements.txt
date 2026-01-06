@@ -6,3 +6,4 @@ PyWavelets
 pycryptodome
 opencv-python-headless
 python-dotenv
+gevent
