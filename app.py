@@ -6,7 +6,6 @@ import hashlib
 from dotenv import load_dotenv
 import os
 from stego import embed_message_array, extract_message_from_array
-from engineio.async_drivers import gevent
 import tempfile
 
 load_dotenv()
@@ -123,4 +122,4 @@ def handle_private_message(data):
         emit('system_message', f'Użytkownik {target_nick} nie jest dostępny')
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, async_mode='gevent')
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
